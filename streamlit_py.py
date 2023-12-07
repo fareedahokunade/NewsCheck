@@ -17,41 +17,56 @@ nltk.download('vader_lexicon')
 nltk.download("stopwords")
 
 # Load the pre-trained model architecture from a JSON file
-with open('model_architecture.json', 'r') as json_file:
-    loaded_model_json = json_file.read()
+try:
+    with open('model_architecture.json', 'r') as json_file:
+        loaded_model_json = json_file.read()
+except FileNotFoundError:
+    st.error("Model architecture file not found. Please ensure it exists and is accessible.")
+    exit()
 
 # Load the pre-trained model weights
-model_weights_file = 'model_weights.h5'
+try:
+    model_weights_file = 'model_weights.h5'
+    model = model_from_json(loaded_model_json)
+    model.load_weights(model_weights_file)
+except FileNotFoundError:
+    st.error("Model weights file not found. Please ensure it exists and is accessible.")
+    exit()
 
-# Load the pre-trained model
-model = model_from_json(loaded_model_json)
-model.load_weights(model_weights_file)
+# Load the label encoder
+try:
+    with open('label_encoder.pkl', 'rb') as pickle_file:
+        label_encoder = pickle.load(pickle_file)
+except FileNotFoundError:
+    st.error("Label encoder file not found. Please ensure it exists and is accessible.")
+    exit()
 
-# Load other necessary components like tokenizer and label encoder
-# Make sure to save these components during training and load them here
-max_words = 10000
-tokenizer = Tokenizer(num_words=max_words)
-tokenizer.fit_on_texts([""])  # Empty fit to avoid errors
+# Load the tokenizer
+try:
+    with open('tokenizer.pkl', 'rb') as pickle_file:
+        tokenizer = pickle.load(pickle_file)
+except FileNotFoundError:
+    st.error("Tokenizer file not found. Please ensure it exists and is accessible.")
+    exit()
+
+MAX_WORDS = 10000
+MAX_SEQUENCE_LENGTH = 200
 
 def preprocess_text(title, text):
-    # Your pre-processing steps here
+    # Lowercase conversion and punctuation removal
     title = title.lower()
     text = text.lower()
+    for char in string.punctuation:
+        title = title.replace(char, "")
+        text = text.replace(char, "")
     
-    title = ''.join(ch for ch in title if ch not in string.punctuation)
-    text = ''.join(ch for ch in text if ch not in string.punctuation)
-    
+    # Tokenization, stop word removal, and lemmatization
     title_tokens = word_tokenize(title)
     text_tokens = word_tokenize(text)
-    
     title_tokens = [token for token in title_tokens if token not in nltk.corpus.stopwords.words('english')]
     text_tokens = [token for token in text_tokens if token not in nltk.corpus.stopwords.words('english')]
-    
     title_tokens = [WordNetLemmatizer().lemmatize(token) for token in title_tokens]
     text_tokens = [WordNetLemmatizer().lemmatize(token) for token in text_tokens]
-    
-    title_pos_tags = pos_tag(title_tokens)
-    text_pos_tags = pos_tag(text_tokens)
     
     # Add more pre-processing steps as needed
     
@@ -63,12 +78,17 @@ def predict_fake_news(title, text):
     
     # Tokenize and pad the sequence
     seq = tokenizer.texts_to_sequences([processed_text])
-    padded_seq = pad_sequences(seq, maxlen=200, padding='post')
+    padded_seq = pad_sequences(seq, maxlen=MAX_SEQUENCE_LENGTH, padding='post')
 
     # Make prediction
     prediction = model.predict(padded_seq)[0][0]
+    
+    # Convert prediction to label and map it back to its meaning
+    label_index = round(prediction)
+    label = label_encoder.inverse_transform([label_index])[0]
 
-    return prediction
+    # Return the label and prediction probability
+    return label, prediction
 
 # Streamlit UI
 st.title("Fake News Detection App")
@@ -81,9 +101,12 @@ text_input = st.text_area("Enter the news text:")
 if st.button("Predict"):
     if title_input and text_input:
         # Make prediction
-        prediction = predict_fake_news(title_input, text_input)
+        label, prediction = predict_fake_news(title_input, text_input)
 
         # Display the result
-        st.write(f"The news has a {prediction * 100:.2f}% chance of being fake.")
-    else:
-        st.warning("Please enter both news title and text.")
+                # Display the result
+        if label == "fake":
+            st.write(f"The news is predicted as **fake** with a probability of {prediction * 100:.2f}%")
+        else:
+            st.write(f"The news is predicted as **real** with a probability of {prediction * 100:.2f}%")
+
