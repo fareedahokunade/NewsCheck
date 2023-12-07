@@ -1,101 +1,68 @@
 import streamlit as st
-import tensorflow
-from tensorflow.keras.models import model_from_json
-from tensorflow.keras.preprocessing.sequence import pad_sequences
+import pandas as pd
+from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.text import Tokenizer
-import string
+from tensorflow.keras.preprocessing.sequence import pad_sequences
+import nltk
 from nltk.tokenize import word_tokenize
-from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 from nltk import pos_tag
-from nltk.sentiment.vader import SentimentIntensityAnalyzer
+import string
 from sklearn.preprocessing import LabelEncoder
-import nltk
-import json
-
-# Load your model architecture from a JSON file
-with open('model_architecture.json', 'r') as json_file:
-    model_json = json_file.read()
-
-model = model_from_json(model_json)
-
-# Load your model weights
-model.load_weights('model_weights.h5')  # replace with your actual model weights file path
-max_sequence_length = 100  # adjust based on your model's input shape
-
-# Load tokenizer (assuming you saved it during training)
-tokenizer = Tokenizer()
-tokenizer.word_index = {'your': 1, 'token': 2, 'mapping': 3}  # replace with your actual tokenizer loading logic
-
-# Other NLTK downloads and setups
-nltk.download("stopwords")
+nltk.download('punkt')
 nltk.download('wordnet')
 nltk.download('averaged_perceptron_tagger')
 nltk.download('vader_lexicon')
-nltk.download('punkt')
+nltk.download("stopwords")
 
-# Create a lemmatizer
-lemmatizer = WordNetLemmatizer()
+# Load the pre-trained model
+model_json_file = "model_architecture.json"
+with open(model_json_file, "r") as json_file:
+    loaded_model_json = json_file.read()
+model = model_from_json(loaded_model_json)
 
-# Create a sentiment analyzer
-analyzer = SentimentIntensityAnalyzer()
+# Load the pre-trained model weights
+model_weights_file = "model_weights.h5"
+model.load_weights(model_weights_file)
 
-# Remove common English stop words
-stop_words = set(stopwords.words('english'))
 
-# Streamlit app
-st.title('Fake News Detection App')
+# Load other necessary components like tokenizer and label encoder
+# Make sure to save these components during training and load them here
 
-# Text inputs for news title and news text
-news_title = st.text_area('Enter the news title:', '')
-news_text = st.text_area('Enter the news text:', '')
+def preprocess_text(text):
+    # Your pre-processing steps here
+    text = text.lower()
+    text = ''.join(ch for ch in text if ch not in string.punctuation)
+    tokens = word_tokenize(text)
+    tokens = [token for token in tokens if token not in nltk.corpus.stopwords.words('english')]
+    tokens = [WordNetLemmatizer().lemmatize(token) for token in tokens]
+    pos_tags = pos_tag(tokens)
+    # Add more pre-processing steps as needed
+    return ' '.join(tokens)
 
-# Preprocess and make predictions when a button is clicked
-if st.button('Predict'):
-    try:
-        # Preprocess the input text
-        news_title = news_title.lower()
-        news_text = news_text.lower()
+def predict_fake_news(text):
+    # Pre-process the input text
+    processed_text = preprocess_text(text)
+    
+    # Tokenize and pad the sequence
+    max_words = 10000
+    tokenizer = Tokenizer(num_words=max_words)
+    tokenizer.fit_on_texts([processed_text])
+    seq = tokenizer.texts_to_sequences([processed_text])
+    padded_seq = pad_sequences(seq, maxlen=200, padding='post')
 
-        # Remove punctuation
-        news_title = ''.join(ch for ch in news_title if ch not in string.punctuation)
-        news_text = ''.join(ch for ch in news_text if ch not in string.punctuation)
+    # Make prediction
+    prediction = model.predict(padded_seq)[0][0]
 
-        # Tokenize and lemmatize
-        title_tokens = word_tokenize(news_title)
-        title_tokens = [token for token in title_tokens if token not in stop_words]
-        title_tokens = [lemmatizer.lemmatize(token) for token in title_tokens]
+    return prediction
 
-        text_tokens = word_tokenize(news_text)
-        text_tokens = [token for token in text_tokens if token not in stop_words]
-        text_tokens = [lemmatizer.lemmatize(token) for token in text_tokens]
+# Streamlit UI
+st.title("Fake News Detection App")
 
-        # Combine title and text tokens
-        tokens = title_tokens + text_tokens
-
-        # POS tagging
-        pos_tags = pos_tag(tokens)
-
-        # Sentiment analysis
-        title_sentiment = analyzer.polarity_scores(news_title)
-        text_sentiment = analyzer.polarity_scores(news_text)
-
-        # Convert tokens to sequences using the tokenizer
-        sequences = tokenizer.texts_to_sequences([tokens])
-
-        # Pad sequences
-        padded_sequences = pad_sequences(sequences, maxlen=200)
-
-        # Make predictions using the loaded model
-        prediction = model.predict(padded_sequences)
-
-        # Assuming a binary classification, you might display the result like this
-        st.write(f'Prediction: {prediction[0][0]}')
-        st.write(f'Title Tokens: {title_tokens}')
-        st.write(f'Text Tokens: {text_tokens}')
-        st.write(f'POS Tags: {pos_tags}')
-        st.write(f'Title Sentiment Scores: {title_sentiment}')
-        st.write(f'Text Sentiment Scores: {text_sentiment}')
-
-    except Exception as e:
-        st.error(f'Error: {str(e)}')
+user_input = st.text_area("Enter the news text:")
+if st.button("Predict"):
+    if user_input:
+        result = predict_fake_news(user_input)
+        st.write(f"The news has a {result*100:.2f}% chance of being fake.")
+    else:
+        st.warning("Please enter some news text.")
