@@ -2,3 +2,6 @@ pandas
 tensorflow
 Flask
 scikit-learn
+nltk
+string
+json
