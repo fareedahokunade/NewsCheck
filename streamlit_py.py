@@ -8,6 +8,7 @@ from nltk.tokenize import word_tokenize
 from nltk.stem import WordNetLemmatizer
 from nltk import pos_tag
 import string
+import pickle
 from sklearn.preprocessing import LabelEncoder
 
 nltk.download('punkt')
