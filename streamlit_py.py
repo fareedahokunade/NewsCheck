@@ -17,11 +17,11 @@ nltk.download('vader_lexicon')
 nltk.download("stopwords")
 
 # Load the pre-trained model architecture from a JSON file
-with open('path/to/your/model/architecture.json', 'r') as json_file:
+with open('model_architecture.json', 'r') as json_file:
     loaded_model_json = json_file.read()
 
 # Load the pre-trained model weights
-model_weights_file = 'path/to/your/model/weights.h5'
+model_weights_file = 'model_weights.h5'
 
 # Load the pre-trained model
 model = model_from_json(loaded_model_json)
