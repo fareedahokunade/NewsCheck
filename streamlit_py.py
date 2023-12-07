@@ -1,6 +1,7 @@
 # Import necessary libraries
 import streamlit as st
 import pandas as pd
+import tensorflow
 from tensorflow.keras.models import model_from_json
 from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
