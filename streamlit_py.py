@@ -16,14 +16,13 @@ nltk.download('vader_lexicon')
 nltk.download("stopwords")
 
 # Load the pre-trained model
-model_json_file = "model_architecture.json"
-with open(model_json_file, "r") as json_file:
-    loaded_model_json = json_file.read()
-model = model_from_json(loaded_model_json)
+with open('model_architecture.json', 'r') as json_file:
+    model_json = json_file.read()
 
-# Load the pre-trained model weights
-model_weights_file = "model_weights.h5"
-model.load_weights(model_weights_file)
+model = model_from_json(model_json)
+
+# Load your model weights
+model.load_weights('model_weights.h5')
 
 
 # Load other necessary components like tokenizer and label encoder
