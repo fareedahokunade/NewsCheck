@@ -84,7 +84,7 @@ if st.button('Predict'):
         sequences = tokenizer.texts_to_sequences([tokens])
 
         # Pad sequences
-        padded_sequences = pad_sequences(sequences, maxlen=max_sequence_length)
+        padded_sequences = pad_sequences(sequences, maxlen=200)
 
         # Make predictions using the loaded model
         prediction = model.predict(padded_sequences)
