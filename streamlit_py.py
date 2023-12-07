@@ -1,5 +1,6 @@
 import Flask
 import tensorflow
+import flask
 
 from flask import Flask, render_template, request, jsonify
 from tensorflow.keras.models import model_from_json
